@@ -12,16 +12,22 @@ Options:
 from docopt import docopt
 import pickle
 
-from nltk.corpus import gutenberg
+from nltk.corpus import PlaintextCorpusReader
 
-from languagemodeling.ngram import NGram
+import os.path, sys
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir))
+from ngram import NGram
 
 
 if __name__ == '__main__':
     opts = docopt(__doc__)
 
     # load the data
-    sents = gutenberg.sents('austen-emma.txt')
+    corpus = PlaintextCorpusReader(
+        'corpus_wikipedia',
+        'spanishText_20000_25000'
+    )
+    sents = corpus.sents()
 
     # train the model
     n = int(opts['-n'])
@@ -30,5 +36,5 @@ if __name__ == '__main__':
     # save it
     filename = opts['-o']
     f = open(filename, 'wb')
-    pickle.dump(model, f)
+    pickle.dump(model, f, protocol=2)
     f.close()

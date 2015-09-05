@@ -12,9 +12,15 @@ Options:
 from docopt import docopt
 import pickle
 
-import os.path, sys
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir))
-from ngram import NGramGenerator
+import os.path
+import sys
+# Add ../../ to PYTHONPATH
+sys.path.append(
+    os.path.join(
+        os.path.dirname(os.path.realpath(__file__)),
+        os.pardir, os.pardir))
+
+from languagemodeling.ngram import NGramGenerator
 
 
 if __name__ == '__main__':

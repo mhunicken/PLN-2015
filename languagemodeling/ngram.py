@@ -1,5 +1,5 @@
 from collections import defaultdict
-from constants import SENT_START, SENT_END
+from .constants import SENT_START, SENT_END
 from math import log
 
 import random
@@ -17,7 +17,7 @@ class NGram(object):
         self.counts = defaultdict(int)
         self.candidates_next = defaultdict(set)
 
-        for i, sent in enumerate(sents):
+        for sent in sents:
             sent = [SENT_START] * (n-1) + sent + [SENT_END]
             for i in range(len(sent) - n + 1):
                 ngram = tuple(sent[i: i + n])
@@ -150,3 +150,30 @@ class NGramGenerator(object):
                 return token
 
         assert(0)
+
+
+class AddOneNGram(NGram):
+    def __init__(self, n, sents):
+        super(AddOneNGram, self).__init__(n, sents)
+        vocab = set()
+        for sent in sents:
+            for token in sent:
+                vocab.add(token)
+        self.vocab_size = len(vocab) + 1  # Count </s>
+
+    def cond_prob(self, token, prev_tokens=None):
+        """Conditional probability of a token.
+
+        token -- the token.
+        prev_tokens -- the previous n-1 tokens (optional only if n = 1).
+        """
+        prev_tokens = prev_tokens or ()
+        prev_tokens = tuple(prev_tokens)
+        assert len(prev_tokens) == self.n - 1
+        tokens = prev_tokens + (token,)
+        return float(self.count(tokens)+1) / (self.count(prev_tokens)+self.V())
+
+    def V(self):
+        """Size of the vocabulary.
+        """
+        return self.vocab_size

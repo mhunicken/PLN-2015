@@ -1,11 +1,14 @@
 """Train an n-gram model.
 
 Usage:
-  train.py -n <n> -o <file>
+  train.py -n <n> [-m <model>] -o <file>
   train.py -h | --help
 
 Options:
   -n <n>        Order of the model.
+  -m <model>    Model to use [default: ngram]:
+                  ngram: Unsmoothed n-grams.
+                  addone: N-grams with add-one smoothing.
   -o <file>     Output model file.
   -h --help     Show this screen.
 """
@@ -22,7 +25,7 @@ sys.path.append(
         os.path.dirname(os.path.realpath(__file__)),
         os.pardir, os.pardir))
 
-from languagemodeling.ngram import NGram
+from languagemodeling.ngram import NGram, AddOneNGram
 
 
 if __name__ == '__main__':
@@ -37,8 +40,14 @@ if __name__ == '__main__':
 
     # train the model
     n = int(opts['-n'])
-    model = NGram(n, sents)
-
+    model_type = opts['-m'] or 'ngram'
+    if model_type == 'ngram':
+        model = NGram(n, sents)
+    elif model_type == 'addone':
+        model = AddOneNGram(n, sents)
+    else:
+        print('Invalid model type')
+        exit(1)
     # save it
     filename = opts['-o']
     f = open(filename, 'wb')

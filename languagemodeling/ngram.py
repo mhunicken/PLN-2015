@@ -5,6 +5,14 @@ from math import log
 import random
 
 
+def vocab_size_from_sents(sents):
+    vocab = set()
+    for sent in sents:
+        for token in sent:
+            vocab.add(token)
+    return len(vocab) + 1  # Count </s>
+
+
 class NGram(object):
 
     def __init__(self, n, sents):
@@ -155,25 +163,21 @@ class NGramGenerator(object):
         prev_tokens = tuple(prev_tokens)
         assert len(prev_tokens) == self.model.n - 1
 
-        p = random.random()
-        sp = 0.
+        target = random.random()
+        acum = 0.
 
         for token, prob in self.sorted_probs[prev_tokens]:
-            sp += prob
-            if sp > p:
+            acum += prob
+            if acum > target:
                 return token
 
-        assert(0)
+        assert 0
 
 
 class AddOneNGram(NGram):
     def __init__(self, n, sents):
         super(AddOneNGram, self).__init__(n, sents)
-        vocab = set()
-        for sent in sents:
-            for token in sent:
-                vocab.add(token)
-        self.vocab_size = len(vocab) + 1  # Count </s>
+        self.vocab_size = vocab_size_from_sents(sents)
 
     def cond_prob(self, token, prev_tokens=None):
         """Conditional probability of a token.
@@ -193,7 +197,7 @@ class AddOneNGram(NGram):
         return self.vocab_size
 
 
-class InterpolatedNGram(NGram):
+class InterpolatedNGram(AddOneNGram):
     def __init__(self, n, sents, gamma=None, addone=True):
         """
         n -- order of the model.
@@ -208,15 +212,19 @@ class InterpolatedNGram(NGram):
 
         for sent in sents:
             sent = [SENT_START] * (n-1) + sent + [SENT_END]
-            for m in range(n+1):
-                for i in range(n-m, len(sent) - m + 1):
-                    ngram = tuple(sent[i: i + m])
+            for j in range(n+1):
+                for i in range(n-j, len(sent) - j + 1):
+                    ngram = tuple(sent[i: i + j])
                     self.counts[ngram] += 1
+            for j in range(1, n):
+                self.counts[(SENT_START,)*j] += 1
+
+        self.vocab_size = vocab_size_from_sents(sents)
 
         self.gamma = gamma
         if self.gamma is None:
             # TODO train gamma
-            raise NotImplemented
+            raise NotImplementedError
 
         self.addone = addone
 
@@ -229,9 +237,36 @@ class InterpolatedNGram(NGram):
         prev_tokens = prev_tokens or ()
         prev_tokens = tuple(prev_tokens)
         assert len(prev_tokens) == self.n - 1
-        # TODO
+
+        lambdas = self._lambdas_from_prev_tokens(prev_tokens)
+        count_seq = float(self.count(prev_tokens + (token,)))
+        try:
+            if self.addone:
+                probs = [
+                    (count_seq+1)/(self.count(prev_tokens[i:]) + self.V())
+                    for i in range(self.n)
+                ]
+            else:
+                probs = [
+                    count_seq/self.count(prev_tokens[i:])
+                    for i in range(self.n)
+                ]
+            return sum(l*p for l, p in zip(lambdas, probs))
+        except ZeroDivisionError:
+            return 0.  # FIXME
+
+    def _lambdas_from_prev_tokens(self, prev_tokens):
+        lambdas = []
+        lambda_sum = 0.
+        for i in range(1, self.n):
+            cnt = self.count(prev_tokens[:i])
+            lambdas.append((1-lambda_sum) * cnt / (cnt+self.gamma))
+            lambda_sum += lambdas[-1]
+        lambdas.append(1-lambda_sum)
+        return lambdas
 
 
-class BackOffNGram:
+class BackOffNGram(object):
     # TODO
-    pass
+    def __init__(self):
+        pass

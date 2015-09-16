@@ -79,6 +79,21 @@ class NGram(object):
 
         return result
 
+    def avg_log_probability(self, sents, base=2.):
+        result = 0
+        for sent in sents:
+            result += self.sent_log_prob(sent, base)
+        return result / len(sents)
+
+    def perplexity(self, sents, avg_logp=None):
+        if avg_logp is None:
+            avg_logp = self.avg_log_probability(sents, 2.)
+        return 2**(-avg_logp)
+
+    def cross_entropy(self, sents):
+        return 0.  # TODO
+
+
 #    def generate_token(self, prev_tokens=None):
 #        """Randomly generate a token, given prev_tokens.
 
@@ -97,7 +112,6 @@ class NGram(object):
 #                return token
 
 #        assert(0)
-
 
 class NGramGenerator(object):
 
@@ -177,3 +191,47 @@ class AddOneNGram(NGram):
         """Size of the vocabulary.
         """
         return self.vocab_size
+
+
+class InterpolatedNGram(NGram):
+    def __init__(self, n, sents, gamma=None, addone=True):
+        """
+        n -- order of the model.
+        sents -- list of sentences, each one being a list of tokens.
+        gamma -- interpolation hyper-parameter (if not given, estimate using
+            held-out data).
+        addone -- whether to use addone smoothing (default: True).
+        """
+        assert n > 0
+        self.n = n
+        self.counts = defaultdict(int)
+
+        for sent in sents:
+            sent = [SENT_START] * (n-1) + sent + [SENT_END]
+            for m in range(n+1):
+                for i in range(n-m, len(sent) - m + 1):
+                    ngram = tuple(sent[i: i + m])
+                    self.counts[ngram] += 1
+
+        self.gamma = gamma
+        if self.gamma is None:
+            # TODO train gamma
+            raise NotImplemented
+
+        self.addone = addone
+
+    def cond_prob(self, token, prev_tokens=None):
+        """Conditional probability of a token.
+
+        token -- the token.
+        prev_tokens -- the previous n-1 tokens (optional only if n = 1).
+        """
+        prev_tokens = prev_tokens or ()
+        prev_tokens = tuple(prev_tokens)
+        assert len(prev_tokens) == self.n - 1
+        # TODO
+
+
+class BackOffNGram:
+    # TODO
+    pass

@@ -210,21 +210,28 @@ class InterpolatedNGram(AddOneNGram):
         self.n = n
         self.counts = defaultdict(int)
 
-        for sent in sents:
-            sent = [SENT_START] * (n-1) + sent + [SENT_END]
-            for j in range(n+1):
-                for i in range(n-j, len(sent) - j + 1):
-                    ngram = tuple(sent[i: i + j])
-                    self.counts[ngram] += 1
-            for j in range(1, n):
-                self.counts[(SENT_START,)*j] += 1
+        heldout_set = []
+
+        for i, sent in enumerate(sents):
+            if gamma is None and i%10 == 1:
+                # held out
+                heldout_set.append(sent)
+            else:
+                # train
+                sent = [SENT_START] * (n-1) + sent + [SENT_END]
+                for j in range(n+1):
+                    for i in range(n-j, len(sent) - j + 1):
+                        ngram = tuple(sent[i: i + j])
+                        self.counts[ngram] += 1
+                for j in range(1, n):
+                    self.counts[(SENT_START,)*j] += 1
 
         self.vocab_size = vocab_size_from_sents(sents)
 
         self.gamma = gamma
         if self.gamma is None:
             # TODO train gamma
-            raise NotImplementedError
+            self.gamma = 10.
 
         self.addone = addone
 
@@ -239,21 +246,14 @@ class InterpolatedNGram(AddOneNGram):
         assert len(prev_tokens) == self.n - 1
 
         lambdas = self._lambdas_from_prev_tokens(prev_tokens)
-        count_seq = float(self.count(prev_tokens + (token,)))
-        try:
-            if self.addone:
-                probs = [
-                    (count_seq+1)/(self.count(prev_tokens[i:]) + self.V())
-                    for i in range(self.n)
-                ]
-            else:
-                probs = [
-                    count_seq/self.count(prev_tokens[i:])
-                    for i in range(self.n)
-                ]
-            return sum(l*p for l, p in zip(lambdas, probs))
-        except ZeroDivisionError:
-            return 0.  # FIXME
+        probs = [
+            float(self.count(prev_tokens[i:]+(token,)))/self.count(prev_tokens[i:])
+            if self.count(prev_tokens[i:]) else 0
+            for i in range(self.n)
+        ]
+        if self.addone:
+            probs[-1] = (self.count((token,))+1)/(self.count(()) + self.V())
+        return sum(l*p for l, p in zip(lambdas, probs))
 
     def _lambdas_from_prev_tokens(self, prev_tokens):
         lambdas = []

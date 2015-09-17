@@ -246,6 +246,7 @@ class InterpolatedNGram(AddOneNGram):
         assert len(prev_tokens) == self.n - 1
 
         lambdas = self._lambdas_from_prev_tokens(prev_tokens)
+
         probs = [
             float(self.count(prev_tokens[i:]+(token,)))/self.count(prev_tokens[i:])
             if self.count(prev_tokens[i:]) else 0
@@ -258,8 +259,8 @@ class InterpolatedNGram(AddOneNGram):
     def _lambdas_from_prev_tokens(self, prev_tokens):
         lambdas = []
         lambda_sum = 0.
-        for i in range(1, self.n):
-            cnt = self.count(prev_tokens[:i])
+        for i in range(0, self.n-1):
+            cnt = self.count(prev_tokens[i:])
             lambdas.append((1-lambda_sum) * cnt / (cnt+self.gamma))
             lambda_sum += lambdas[-1]
         lambdas.append(1-lambda_sum)

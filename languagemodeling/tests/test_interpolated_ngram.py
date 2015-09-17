@@ -106,7 +106,7 @@ class TestInterpolatedNGram(TestCase):
         for model in models:
             prob_sum = sum(model.cond_prob(token) for token in tokens)
             # prob_sum < 1.0 or almost equal to 1.0:
-            self.assertTrue(prob_sum < 1.0 or abs(prob_sum - 1.0) < 1e-10)
+            self.assertAlmostEqual(prob_sum, 1., 10)
 
     def test_norm_2gram(self):
         models = [
@@ -126,9 +126,11 @@ class TestInterpolatedNGram(TestCase):
 
         for model in models:
             for prev in list(tokens) + ['<s>']:
+                if prev == '</s>':
+                    continue
                 prob_sum = sum(model.cond_prob(token, [prev]) for token in tokens)
                 # prob_sum < 1.0 or almost equal to 1.0:
-                self.assertTrue(prob_sum < 1.0 or abs(prob_sum - 1.0) < 1e-10)
+                self.assertAlmostEqual(prob_sum, 1., 10)
 
     def test_norm_3gram(self):
         models = [
@@ -151,9 +153,11 @@ class TestInterpolatedNGram(TestCase):
 
         for model in models:
             for prev in prevs:
+                if '</s>' in prev:
+                    continue
                 prob_sum = sum(model.cond_prob(token, prev) for token in tokens)
                 # prob_sum < 1.0 or almost equal to 1.0:
-                self.assertTrue(prob_sum < 1.0 or abs(prob_sum - 1.0) < 1e-10)
+                self.assertAlmostEqual(prob_sum, 1., 10)
 
     def test_held_out(self):
         model = InterpolatedNGram(1, self.sents)

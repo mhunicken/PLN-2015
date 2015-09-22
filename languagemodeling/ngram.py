@@ -23,7 +23,7 @@ class NGram(object):
         assert n > 0
         self.n = n
         self.counts = defaultdict(int)
-        self.candidates_next = defaultdict(set)
+#        self.candidates_next = defaultdict(set)
 
         for sent in sents:
             sent = [SENT_START] * (n-1) + sent + [SENT_END]
@@ -31,7 +31,7 @@ class NGram(object):
                 ngram = tuple(sent[i: i + n])
                 self.counts[ngram] += 1
                 self.counts[ngram[:-1]] += 1
-                self.candidates_next[ngram[:-1]].add(ngram[-1])
+#                self.candidates_next[ngram[:-1]].add(ngram[-1])
 
     def count(self, tokens):
         """Count for an n-gram or (n-1)-gram.
@@ -87,20 +87,20 @@ class NGram(object):
 
         return result
 
-    def avg_log_probability(self, sents, base=2.):
-        result = 0
-        for sent in sents:
-            result += self.sent_log_prob(sent, base)
-        return result / len(sents)
+    def log_probability(self, sents, base=2.):
+        return sum(self.sent_log_prob(sent, base) for sent in sents)
 
-    def perplexity(self, sents, avg_logp=None):
-        if avg_logp is None:
-            avg_logp = self.avg_log_probability(sents, 2.)
-        return 2**(-avg_logp)
+    def cross_entropy(self, sents, base=2.):
+        return -self.log_probability(sents, base) / sum(len(sent) + 1 for sent in sents)
 
-    def cross_entropy(self, sents):
-        return 0.  # TODO
+    def perplexity(self, sents, base=2.):
+        return base ** self.cross_entropy(sents, base)
 
+    def logp_entropy_perplexity(self, sents, base=2.):
+        logp = self.log_probability(sents, base)
+        crosse = -logp / sum(len(sent) + 1 for sent in sents)
+        perp = base ** crosse
+        return logp, crosse, perp
 
 #    def generate_token(self, prev_tokens=None):
 #        """Randomly generate a token, given prev_tokens.
@@ -130,7 +130,7 @@ class NGramGenerator(object):
         self.model = model
         self.probs = {}
         self.sorted_probs = {}
-        for prev_tokens, nexts in self.model.candidates_next.items():
+        for prev_tokens, nexts in self.model.candidates_next.items():  # FIXME no more candidates_next
             self.probs[prev_tokens] = {}
             self.sorted_probs[prev_tokens] = []
             for token in nexts:
@@ -198,6 +198,9 @@ class AddOneNGram(NGram):
 
 
 class InterpolatedNGram(AddOneNGram):
+
+    GAMMA_CANDIDATES = [1.5 ** x for x in range(20)]
+
     def __init__(self, n, sents, gamma=None, addone=True):
         """
         n -- order of the model.
@@ -228,12 +231,20 @@ class InterpolatedNGram(AddOneNGram):
 
         self.vocab_size = vocab_size_from_sents(sents)
 
+        self.addone = addone
+
         self.gamma = gamma
         if self.gamma is None:
-            # TODO train gamma
-            self.gamma = 10.
-
-        self.addone = addone
+            best_gamma = None
+            best_perp = float("inf")
+            for gamma in InterpolatedNGram.GAMMA_CANDIDATES:
+                self.gamma = gamma
+                perp = self.perplexity(heldout_set)
+                if best_gamma is None or perp < best_perp:
+                    best_perp = perp
+                    best_gamma = gamma
+            self.gamma = best_gamma
+        print(self.gamma)
 
     def cond_prob(self, token, prev_tokens=None):
         """Conditional probability of a token.

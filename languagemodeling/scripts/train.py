@@ -9,13 +9,14 @@ Options:
   -m <model>    Model to use [default: ngram]:
                   ngram: Unsmoothed n-grams.
                   addone: N-grams with add-one smoothing.
+                  interpolated: N-grams with linear interpolation
   -o <file>     Output model file.
   -h --help     Show this screen.
 """
 from docopt import docopt
 import pickle
 
-from nltk.corpus import PlaintextCorpusReader
+from nltk.corpus import PlaintextCorpusReader, gutenberg
 
 import os.path
 import sys
@@ -25,18 +26,18 @@ sys.path.append(
         os.path.dirname(os.path.realpath(__file__)),
         os.pardir, os.pardir))
 
-from languagemodeling.ngram import NGram, AddOneNGram
+from languagemodeling.ngram import NGram, AddOneNGram, InterpolatedNGram
 
 
 if __name__ == '__main__':
     opts = docopt(__doc__)
 
     # load the data
-    corpus = PlaintextCorpusReader(
-        'corpus_wikipedia',
-        'spanishText_20000_25000'
-    )
-    sents = corpus.sents()
+    #corpus = PlaintextCorpusReader(
+    #    'gutenberg',
+    #    '.*'
+    #)
+    sents = gutenberg.sents()
 
     # train the model
     n = int(opts['-n'])
@@ -45,6 +46,8 @@ if __name__ == '__main__':
         model = NGram(n, sents)
     elif model_type == 'addone':
         model = AddOneNGram(n, sents)
+    elif model_type == 'interpolated':
+        model = InterpolatedNGram(n, sents)
     else:
         print('Invalid model type')
         exit(1)

@@ -31,15 +31,13 @@ if __name__ == '__main__':
 
     # load the test set
     corpus = PlaintextCorpusReader(
-        'corpus_wikipedia',
-        'spanishText_480000_485000'
+        '.',
+        'austen-persuasion.txt'
     )
     sents = corpus.sents()
 
-    avg_logp = model.avg_log_probability(sents)
-    perplexity = model.perplexity(sents, avg_logp)
-    cross_entropy = model.cross_entropy(sents)
+    logp, cross_entropy, perplexity = model.logp_entropy_perplexity(sents)
 
-    print('Average log probability: %s' % avg_logp)
-    print('Perplexity: %s' % perplexity)
+    print('Log probability: %s' % logp)
     print('Cross entropy: %s' % cross_entropy)
+    print('Perplexity: %s' % perplexity)

@@ -23,7 +23,6 @@ class NGram(object):
         assert n > 0
         self.n = n
         self.counts = defaultdict(int)
-#        self.candidates_next = defaultdict(set)
 
         for sent in sents:
             sent = [SENT_START] * (n-1) + sent + [SENT_END]
@@ -31,7 +30,6 @@ class NGram(object):
                 ngram = tuple(sent[i: i + n])
                 self.counts[ngram] += 1
                 self.counts[ngram[:-1]] += 1
-#                self.candidates_next[ngram[:-1]].add(ngram[-1])
 
     def count(self, tokens):
         """Count for an n-gram or (n-1)-gram.
@@ -91,7 +89,8 @@ class NGram(object):
         return sum(self.sent_log_prob(sent, base) for sent in sents)
 
     def cross_entropy(self, sents, base=2.):
-        return -self.log_probability(sents, base) / sum(len(sent) + 1 for sent in sents)
+        return -self.log_probability(sents, base) \
+            / sum(len(sent) + 1 for sent in sents)
 
     def perplexity(self, sents, base=2.):
         return base ** self.cross_entropy(sents, base)
@@ -121,6 +120,7 @@ class NGram(object):
 
 #        assert(0)
 
+
 class NGramGenerator(object):
 
     def __init__(self, model):
@@ -128,15 +128,18 @@ class NGramGenerator(object):
         model -- n-gram model.
         """
         self.model = model
-        self.probs = {}
-        self.sorted_probs = {}
-        for prev_tokens, nexts in self.model.candidates_next.items():  # FIXME no more candidates_next
-            self.probs[prev_tokens] = {}
-            self.sorted_probs[prev_tokens] = []
-            for token in nexts:
-                prob = self.model.cond_prob(token, prev_tokens)
-                self.probs[prev_tokens][token] = prob
-                self.sorted_probs[prev_tokens].append((token, prob))
+        self.probs = defaultdict(dict)
+        self.sorted_probs = defaultdict(list)
+        for tokens, count in self.model.counts.items():
+            if len(tokens) < self.model.n:
+                continue
+            prev_tokens = tokens[:-1]
+            token = tokens[-1]
+            prob = self.model.cond_prob(token, prev_tokens)
+            self.probs[prev_tokens][token] = prob
+            self.sorted_probs[prev_tokens].append((token, prob))
+
+        for prev_tokens in self.sorted_probs:
             self.sorted_probs[prev_tokens].sort(key=lambda t: (t[1], t[0]))
 
     def generate_sent(self):
@@ -216,7 +219,7 @@ class InterpolatedNGram(AddOneNGram):
         heldout_set = []
 
         for i, sent in enumerate(sents):
-            if gamma is None and i%10 == 1:
+            if gamma is None and i % 10 == 1:
                 # held out
                 heldout_set.append(sent)
             else:
@@ -259,7 +262,8 @@ class InterpolatedNGram(AddOneNGram):
         lambdas = self._lambdas_from_prev_tokens(prev_tokens)
 
         probs = [
-            float(self.count(prev_tokens[i:]+(token,)))/self.count(prev_tokens[i:])
+            float(self.count(prev_tokens[i:]+(token,)))
+            / self.count(prev_tokens[i:])
             if self.count(prev_tokens[i:]) else 0
             for i in range(self.n)
         ]

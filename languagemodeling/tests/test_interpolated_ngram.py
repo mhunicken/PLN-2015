@@ -157,8 +157,6 @@ class TestInterpolatedNGram(TestCase):
 
         for model in models:
             for prev in prevs:
-                if '</s>' in prev:
-                    continue
                 prob_sum = sum(model.cond_prob(token, prev) for token in tokens)
                 # prob_sum < 1.0 or almost equal to 1.0:
                 self.assertAlmostEqual(prob_sum, 1., 10)

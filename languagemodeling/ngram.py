@@ -1,17 +1,10 @@
 from collections import defaultdict
-from .constants import SENT_START, SENT_END
 from math import log
 
 import random
 
-
-def vocab_size_from_sents(sents):
-    vocab = set()
-    for sent in sents:
-        for token in sent:
-            vocab.add(token)
-    return len(vocab) + 1  # Count </s>
-
+SENT_START = '<s>'
+SENT_END = '</s>'
 
 class NGram(object):
 
@@ -31,12 +24,24 @@ class NGram(object):
                 self.counts[ngram] += 1
                 self.counts[ngram[:-1]] += 1
 
+        self.set_vocab_size(sents)
+
+    def set_vocab_size(self, sents):
+        vocab = set()
+        for sent in sents:
+            for token in sent:
+                vocab.add(token)
+        self.vocab_size = len(vocab) + 1  # Count </s>
+
     def count(self, tokens):
         """Count for an n-gram or (n-1)-gram.
 
         tokens -- the n-gram or (n-1)-gram tuple.
         """
-        return self.counts[tokens]
+        result = self.counts[tokens]
+        if not result:
+            del self.counts[tokens]
+        return result
 
     def cond_prob(self, token, prev_tokens=None):
         """Conditional probability of a token.
@@ -55,7 +60,7 @@ class NGram(object):
 
         sent -- the sentence as a list of tokens.
         """
-        sent += [SENT_END]
+        sent = sent + [SENT_END]
         result = 1.
         prev_tokens = (SENT_START,) * (self.n-1)
 
@@ -72,7 +77,7 @@ class NGram(object):
 
         sent -- the sentence as a list of tokens.
         """
-        sent += [SENT_END]
+        sent = sent + [SENT_END]
         result = 0.
         prev_tokens = (SENT_START,) * (self.n - 1)
 
@@ -100,6 +105,11 @@ class NGram(object):
         crosse = -logp / sum(len(sent) + 1 for sent in sents)
         perp = base ** crosse
         return logp, crosse, perp
+
+    def V(self):
+        """Size of the vocabulary.
+        """
+        return self.vocab_size
 
 #    def generate_token(self, prev_tokens=None):
 #        """Randomly generate a token, given prev_tokens.
@@ -130,7 +140,7 @@ class NGramGenerator(object):
         self.model = model
         self.probs = defaultdict(dict)
         self.sorted_probs = defaultdict(list)
-        for tokens, count in self.model.counts.items():
+        for tokens in self.model.counts:
             if len(tokens) < self.model.n:
                 continue
             prev_tokens = tokens[:-1]
@@ -180,7 +190,6 @@ class NGramGenerator(object):
 class AddOneNGram(NGram):
     def __init__(self, n, sents):
         super(AddOneNGram, self).__init__(n, sents)
-        self.vocab_size = vocab_size_from_sents(sents)
 
     def cond_prob(self, token, prev_tokens=None):
         """Conditional probability of a token.
@@ -194,13 +203,8 @@ class AddOneNGram(NGram):
         tokens = prev_tokens + (token,)
         return float(self.count(tokens)+1) / (self.count(prev_tokens)+self.V())
 
-    def V(self):
-        """Size of the vocabulary.
-        """
-        return self.vocab_size
 
-
-class InterpolatedNGram(AddOneNGram):
+class InterpolatedNGram(NGram):
 
     GAMMA_CANDIDATES = [1.5 ** x for x in range(20)]
 
@@ -215,7 +219,7 @@ class InterpolatedNGram(AddOneNGram):
         assert n > 0
         self.n = n
         self.counts = defaultdict(int)
-
+        self.set_vocab_size(sents)
         heldout_set = []
 
         for i, sent in enumerate(sents):
@@ -231,8 +235,6 @@ class InterpolatedNGram(AddOneNGram):
                         self.counts[ngram] += 1
                 for j in range(1, n):
                     self.counts[(SENT_START,)*j] += 1
-
-        self.vocab_size = vocab_size_from_sents(sents)
 
         self.addone = addone
 
@@ -282,7 +284,124 @@ class InterpolatedNGram(AddOneNGram):
         return lambdas
 
 
-class BackOffNGram(object):
-    # TODO
-    def __init__(self):
-        pass
+class BackOffNGram(NGram):
+
+    BETA_CANDIDATES = [0.05 * x for x in range(21)]
+
+    def __init__(self, n, sents, beta=None, addone=True):
+        """
+            Back-off NGram model with discounting
+            as described by Michael Collins.
+
+            n -- order of the model.
+            sents -- list of sentences, each one being a list of tokens.
+            beta -- discounting hyper-parameter (if not given, estimate using
+            held-out data).
+            addone -- whether to use addone smoothing (default: True).
+        """
+        assert n > 0
+        self.n = n
+        self.counts = defaultdict(int)
+        self.set_vocab_size(sents)
+        heldout_set = []
+
+        for i, sent in enumerate(sents):
+            if beta is None and i % 10 == 1:
+                # held out
+                heldout_set.append(sent)
+            else:
+                # train
+                sent = [SENT_START] * (n-1) + sent + [SENT_END]
+                for j in range(n+1):
+                    for i in range(n-j, len(sent) - j + 1):
+                        ngram = tuple(sent[i: i + j])
+                        self.counts[ngram] += 1
+                for j in range(1, n):
+                    self.counts[(SENT_START,)*j] += 1
+
+        # |A(x1..xi)|
+        self.card_a = defaultdict(int)
+        # sum(c(x2..xix) for x in A(x1..xi))
+        self.sum_c = defaultdict(int)
+
+        for tokens in self.counts:
+            if len(tokens):
+                if tokens[-1] == SENT_START:
+                    continue
+                prev_tokens = tokens[:-1]
+                self.card_a[prev_tokens] += 1
+                self.sum_c[prev_tokens] += self.count(tokens[1:])
+
+        self.addone = addone
+
+        self.beta = beta
+        if self.beta is None:
+            best_beta = None
+            best_perp = float("inf")
+            for beta in BackOffNGram.BETA_CANDIDATES:
+                self.beta = beta
+                perp = self.perplexity(heldout_set)
+                if best_beta is None or perp < best_perp:
+                    best_perp = perp
+                    best_beta = beta
+            self.beta = best_beta
+
+    def A(self, tokens):
+        """Set of words with counts > 0 for a k-gram with 0 < k < n.
+
+        tokens -- the k-gram tuple.
+        """
+        # Inefficient, but used only in tests
+        result = set()
+        for tokens_suc in self.counts:
+            if tokens_suc[:-1] == tokens and len(tokens_suc):
+                result.add(tokens_suc[-1])
+        return result
+
+    def alpha(self, tokens):
+        """Missing probability mass for a k-gram with 0 < k < n.
+
+        tokens -- the k-gram tuple.
+        """
+        if not self.count(tokens):
+            return 1.
+        return self.beta * self.card_a[tokens] / self.count(tokens)
+
+    def denom(self, tokens):
+        """Normalization factor for a k-gram with 0 < k < n.
+
+        tokens -- the k-gram tuple.
+        """
+        if not self.count(tokens):
+            return 1.
+        assert len(tokens)
+        if len(tokens) == 1:
+            if self.addone:
+                return 1 - float(self.sum_c[tokens]+self.card_a[tokens]) / \
+                    (self.count(tokens[1:]) + self.V())
+            else:
+                return 1 - float(self.sum_c[tokens])/self.count(tokens[1:])
+        else:
+            return 1 - (self.sum_c[tokens]-self.beta*self.card_a[tokens]) / \
+                self.count(tokens[1:])
+
+    def cond_prob(self, token, prev_tokens=None):
+        prev_tokens = prev_tokens or ()
+        prev_tokens = tuple(prev_tokens)
+        tokens = prev_tokens + (token,)
+
+        if not len(prev_tokens):
+            # unigram
+            if not self.addone:
+                return float(self.count(tokens)) / self.count(prev_tokens)
+            return float(self.count(tokens)+1) / \
+                (self.count(prev_tokens) + self.V())
+
+        if self.count(tokens):
+            return (self.count(tokens)-self.beta)/self.count(prev_tokens)
+        elif self.beta > 0.:
+            return self.alpha(prev_tokens) * \
+                self.cond_prob(token, prev_tokens[1:]) / \
+                self.denom(prev_tokens)
+        else:
+            return 0.

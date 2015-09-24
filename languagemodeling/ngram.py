@@ -233,7 +233,6 @@ class InterpolatedNGram(NGram):
                     best_perp = perp
                     best_gamma = gamma
             self.gamma = best_gamma
-        print(self.gamma)
 
     def cond_prob(self, token, prev_tokens=None):
         """Conditional probability of a token.

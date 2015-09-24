@@ -25,7 +25,6 @@ from languagemodeling.ngram import NGramGenerator
 
 if __name__ == '__main__':
     opts = docopt(__doc__)
-    sys.stderr.write('Generate\n')
     # load the model
     filename = opts['-i']
     with open(filename, 'rb') as f:

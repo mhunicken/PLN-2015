@@ -6,6 +6,7 @@ import random
 SENT_START = '<s>'
 SENT_END = '</s>'
 
+
 class NGram(object):
 
     def __init__(self, n, sents):
@@ -85,19 +86,25 @@ class NGram(object):
             for token in sent:
                 result += log(self.cond_prob(token, prev_tokens), base)
                 prev_tokens = (prev_tokens + (token,))[1:]
-        except ValueError:
+        except ValueError:  # log(0)
             return float("-inf")
 
         return result
 
     def log_probability(self, sents, base=2.):
+        """Total log probability of a test set
+        """
         return sum(self.sent_log_prob(sent, base) for sent in sents)
 
     def cross_entropy(self, sents, base=2.):
+        """Cross entropy of a test set
+        """
         return -self.log_probability(sents, base) \
             / sum(len(sent) + 1 for sent in sents)
 
     def perplexity(self, sents, base=2.):
+        """Perplexity of a test set
+        """
         return base ** self.cross_entropy(sents, base)
 
     def logp_entropy_perplexity(self, sents, base=2.):
@@ -110,25 +117,6 @@ class NGram(object):
         """Size of the vocabulary.
         """
         return self.vocab_size
-
-#    def generate_token(self, prev_tokens=None):
-#        """Randomly generate a token, given prev_tokens.
-
-#        prev_tokens -- the previous n-1 tokens (optional only if n = 1).
-#        """
-#        prev_tokens = prev_tokens or ()
-#        prev_tokens = tuple(prev_tokens)
-#        assert len(prev_tokens) == self.n - 1
-
-#        p = random.random()
-#        sp = 0.
-
-#        for token in self.candidates_next[prev_tokens]:
-#            sp += self.cond_prob(token, prev_tokens)
-#            if sp > p:
-#                return token
-
-#        assert(0)
 
 
 class NGramGenerator(object):
@@ -150,7 +138,7 @@ class NGramGenerator(object):
             self.sorted_probs[prev_tokens].append((token, prob))
 
         for prev_tokens in self.sorted_probs:
-            self.sorted_probs[prev_tokens].sort(key=lambda t: (t[1], t[0]))
+            self.sorted_probs[prev_tokens].sort(key=lambda t: (-t[1], t[0]))
 
     def generate_sent(self):
         """Randomly generate a sentence."""
@@ -170,8 +158,6 @@ class NGramGenerator(object):
 
         prev_tokens -- the previous n-1 tokens (optional only if n = 1).
         """
-        # TODO reconsider this:
-        # return self.model.generate_token(prev_tokens)
         prev_tokens = prev_tokens or ()
         prev_tokens = tuple(prev_tokens)
         assert len(prev_tokens) == self.model.n - 1
@@ -188,8 +174,6 @@ class NGramGenerator(object):
 
 
 class AddOneNGram(NGram):
-    def __init__(self, n, sents):
-        super(AddOneNGram, self).__init__(n, sents)
 
     def cond_prob(self, token, prev_tokens=None):
         """Conditional probability of a token.
@@ -206,7 +190,7 @@ class AddOneNGram(NGram):
 
 class InterpolatedNGram(NGram):
 
-    GAMMA_CANDIDATES = [1.5 ** x for x in range(20)]
+    GAMMA_CANDIDATES = [1.5 ** x for x in range(-5, 30)]
 
     def __init__(self, n, sents, gamma=None, addone=True):
         """
@@ -274,6 +258,8 @@ class InterpolatedNGram(NGram):
         return sum(l*p for l, p in zip(lambdas, probs))
 
     def _lambdas_from_prev_tokens(self, prev_tokens):
+        """Lambdas to be used as interpolation weights
+        """
         lambdas = []
         lambda_sum = 0.
         for i in range(0, self.n-1):
@@ -376,6 +362,7 @@ class BackOffNGram(NGram):
             return 1.
         assert len(tokens)
         if len(tokens) == 1:
+            # In unigram level, do not discount
             if self.addone:
                 return 1 - float(self.sum_c[tokens]+self.card_a[tokens]) / \
                     (self.count(tokens[1:]) + self.V())
@@ -404,4 +391,5 @@ class BackOffNGram(NGram):
                 self.cond_prob(token, prev_tokens[1:]) / \
                 self.denom(prev_tokens)
         else:
+            # If beta is 0, there is no residual probability
             return 0.

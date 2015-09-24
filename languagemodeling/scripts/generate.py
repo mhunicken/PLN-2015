@@ -25,16 +25,16 @@ from languagemodeling.ngram import NGramGenerator
 
 if __name__ == '__main__':
     opts = docopt(__doc__)
-
+    sys.stderr.write('Generate\n')
     # load the model
     filename = opts['-i']
     with open(filename, 'rb') as f:
         model = pickle.load(f)
-
+    sys.stderr.write('Loaded model\n')
     # generate
     n = int(opts['-n'])
     generator = NGramGenerator(model)
-
+    sys.stderr.write('Initialized generator\n')
     for i in range(n):
         print('Sentence %s:' % i)
         print(' '.join(generator.generate_sent()))

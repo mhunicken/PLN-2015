@@ -31,8 +31,8 @@ if __name__ == '__main__':
 
     # load the test set
     corpus = PlaintextCorpusReader(
-        '.',
-        'austen-persuasion.txt'
+        'corpus_wikipedia',
+        'spanishText_480000_485000_small'
     )
     sents = corpus.sents()
 

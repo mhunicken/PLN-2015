@@ -1,4 +1,4 @@
-
+from collections import defaultdict
 
 class BaselineTagger:
 
@@ -6,7 +6,19 @@ class BaselineTagger:
         """
         tagged_sents -- training sentences, each one being a list of pairs.
         """
-        pass
+        token_tag_count = {}
+        tag_count = defaultdict(int)
+        for sent in tagged_sents:
+            for token, tag in sent:
+                if token not in token_tag_count:
+                    token_tag_count[token] = defaultdict(int)
+                token_tag_count[token][tag] += 1
+                tag_count[tag] += 1
+
+        self.most_frequent_token_tag = {}
+        for token, tags in token_tag_count.items():
+            self.most_frequent_token_tag[token] = sorted(tags.items(), key=lambda x: -x[1])[0][0]
+        self.most_frequent_tag = sorted(tag_count.items(), key=lambda x: -x[1])[0][0]
 
     def tag(self, sent):
         """Tag a sentence.
@@ -20,11 +32,13 @@ class BaselineTagger:
 
         w -- the word.
         """
-        return 'nc'
+        if self.unknown(w):
+            return self.most_frequent_tag
+        return self.most_frequent_token_tag[w]
 
     def unknown(self, w):
         """Check if a word is unknown for the model.
 
         w -- the word.
         """
-        return True
+        return w not in self.most_frequent_token_tag

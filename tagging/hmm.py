@@ -29,7 +29,9 @@ class HMM(object):
         tag -- the tag.
         prev_tags -- tuple with the previous n-1 tags (optional only if n = 1).
         """
-        return self._trans[prev_tags][tag]
+        if prev_tags in self._trans and tag in self._trans[prev_tags]:
+            return self._trans[prev_tags][tag]
+        return 0
 
     def out_prob(self, word, tag):
         """Probability of a word given a tag.
@@ -115,7 +117,7 @@ class ViterbiTagger:
 
         sent -- the sentence.
         """
-        trans = self.hmm._trans
+        tagset = self.hmm.tagset()
         self._pi = {}
         self._pi[0] = {(SENT_START,)*(self.hmm.n-1): (log(1., 2), [])}
         sent = tuple(sent)
@@ -123,10 +125,13 @@ class ViterbiTagger:
         for i, word in enumerate(sent):
             self._pi[i+1] = next_pi = {}
             for prev_tags, (prev_prob, all_tags) in self._pi[i].items():
-                for tag in trans[prev_tags]:
+                for tag in tagset:
                     tags = (prev_tags + (tag,))[1:]
+                    trans_prob = self.hmm.trans_prob(tag, prev_tags)
+                    if trans_prob < 1e-12:
+                        continue
                     prob = prev_prob + \
-                        log(trans[prev_tags][tag], 2) + \
+                        log(trans_prob, 2) + \
                         log(self.hmm.out_prob(word, tag), 2)
                     if tags not in next_pi or prob > next_pi[tags][0]:
                         next_pi[tags] = (prob, all_tags + [tag])

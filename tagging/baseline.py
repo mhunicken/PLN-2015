@@ -1,5 +1,6 @@
 from collections import defaultdict
 
+
 class BaselineTagger:
 
     def __init__(self, tagged_sents):
@@ -17,8 +18,10 @@ class BaselineTagger:
 
         self.most_frequent_token_tag = {}
         for token, tags in token_tag_count.items():
-            self.most_frequent_token_tag[token] = sorted(tags.items(), key=lambda x: -x[1])[0][0]
-        self.most_frequent_tag = sorted(tag_count.items(), key=lambda x: -x[1])[0][0]
+            self.most_frequent_token_tag[token] = \
+                sorted(tags.items(), key=lambda x: -x[1])[0][0]
+        self.most_frequent_tag = \
+            sorted(tag_count.items(), key=lambda x: -x[1])[0][0]
 
     def tag(self, sent):
         """Tag a sentence.

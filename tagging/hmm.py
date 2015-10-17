@@ -142,7 +142,13 @@ class ViterbiTagger(object):
 
         best_prob = -float('inf')
         best_tagging = None
-        for _, (prob, tagging) in self._pi[len(sent)].items():
+        for prev_tags, (prob, tagging) in self._pi[len(sent)].items():
+            prev_tags = tuple(tagging[-self.hmm.n+1:])
+            trans_prob = self.hmm.trans_prob(SENT_END, prev_tags)
+            if trans_prob < 1e-12:
+                prob = -float('inf')
+            else:
+                prob += log(trans_prob, 2)
             if best_tagging is None or prob > best_prob:
                 best_tagging = tagging
 

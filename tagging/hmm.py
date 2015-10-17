@@ -224,9 +224,8 @@ class MLHMM(HMM):
         word -- the word.
         tag -- the tag.
         """
-        if self.addone:
-            return float(self.out_count(tag, word) + 1) / \
-                (self._single_tag_count[tag] + len(self._out_counts[tag]))
+        if self.unknown(word):
+            return 1. / len(self._vocab)
         else:
             return float(self.out_count(tag, word)) / \
                 self._single_tag_count[tag]

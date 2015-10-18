@@ -1,34 +1,40 @@
 import itertools
 from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.svm import LinearSVC
 from sklearn.pipeline import Pipeline
 from featureforge.vectorizer import Vectorizer
 
 from .features import History, word_lower, word_istitle, word_isupper, \
-    word_isdigit, prev_tags, PrevWord
+    word_isdigit, NPrevTags, PrevWord
 
 
 class MEMM(object):
-
-    def __init__(self, n, tagged_sents):
+    classifiers = {
+        'LogisticRegression': LogisticRegression,
+        'MultinomialNB': MultinomialNB,
+        'LinearSVC': LinearSVC
+    }
+    def __init__(self, n, tagged_sents, classifier_name='LinearSVC'):
         """
         n -- order of the model.
-        tagged_sents -- list of sentences, each one being a list of pairs.
+        stagged_sents -- list of sentences, each one being a list of pairs.
         """
         self._n = n
         vect = Vectorizer([
             word_lower, word_istitle, word_isupper, word_isdigit,
-            prev_tags, PrevWord(word_lower)
-        ])
+            PrevWord(word_lower)
+        ] + [NPrevTags(i) for i in range(1, n)])
         vect.fit(self.sents_histories(tagged_sents))
         self.classifier = Pipeline([
             ('vect', vect),
-            ('clf', LogisticRegression())
+            ('clf', MEMM.classifiers[classifier_name]())
         ])
         self.classifier.fit(
             list(self.sents_histories(tagged_sents)),
             list(self.sents_tags(tagged_sents)))
 
-        self._vocab = {w for sent in tagged_sents for _, w in sent}
+        self._vocab = {w for sent in tagged_sents for w, _ in sent}
 
     def sents_histories(self, tagged_sents):
         """
@@ -45,9 +51,8 @@ class MEMM(object):
 
         tagged_sent -- the tagged sentence (a list of pairs (word, tag)).
         """
-        sent, tags = zip(*tagged_sent)
-        sent = list(sent)
-        tags = tuple(tags)
+        sent = list(s for s, _ in tagged_sent)
+        tags = tuple(t for _, t in tagged_sent)
         return (
             History(
                 sent,

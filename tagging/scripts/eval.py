@@ -85,8 +85,8 @@ if __name__ == '__main__':
     acc_unknown = (hits-hits_known)*100. / (total-total_known)
     print('Accuracy (unknown words): {:2.2f}%'.format(acc_unknown))
 
-    conf_mat_rows = list(conf_mat_rows)
-    conf_mat_cols = list(conf_mat_cols)
+    conf_mat_rows = sorted(list(conf_mat_rows))
+    conf_mat_cols = sorted(list(conf_mat_cols))
     print('Confussion matrix:')
     print('\t' + '\t'.join(conf_mat_cols))
     for t1 in conf_mat_rows:

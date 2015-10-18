@@ -132,7 +132,7 @@ class ViterbiTagger(object):
                     tags = (prev_tags + (tag,))[1:]
                     trans_prob = self.hmm.trans_prob(tag, prev_tags)
                     out_prob = self.hmm.out_prob(word, tag)
-                    if min(trans_prob, out_prob) < 1e-12:
+                    if min(trans_prob, out_prob) == 0.:
                         continue
                     prob = prev_prob + \
                         log(trans_prob, 2) + \
@@ -145,12 +145,13 @@ class ViterbiTagger(object):
         for prev_tags, (prob, tagging) in self._pi[len(sent)].items():
             prev_tags = tuple(tagging[-self.hmm.n+1:])
             trans_prob = self.hmm.trans_prob(SENT_END, prev_tags)
-            if trans_prob < 1e-12:
+            if trans_prob == 0.:
                 prob = -float('inf')
             else:
                 prob += log(trans_prob, 2)
             if best_tagging is None or prob > best_prob:
                 best_tagging = tagging
+                best_prob = prob
 
         return best_tagging
 
@@ -183,7 +184,7 @@ class MLHMM(HMM):
                     self._out_counts[tag][word] = 0
                 self._out_counts[tag][word] += 1
 
-        tagset = self._single_tag_count.keys()
+        tagset = list(set(self._single_tag_count.keys()) - {SENT_END})
         super(MLHMM, self).__init__(n, tagset, None, None)
 
     def tcount(self, tokens):
@@ -220,7 +221,7 @@ class MLHMM(HMM):
         tags = prev_tags + (tag,)
         if self.addone:
             return float(self.tcount(tags) + 1) / \
-                (self.tcount(prev_tags) + len(self._vocab))
+                (self.tcount(prev_tags) + len(self._tagset))
         else:
             return float(self.tcount(tags)) / self.tcount(prev_tags)
 

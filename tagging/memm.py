@@ -11,11 +11,11 @@ from .features import History, word_lower, word_istitle, word_isupper, \
 
 class MEMM(object):
     classifiers = {
-        'LogisticRegression': LogisticRegression,
-        'MultinomialNB': MultinomialNB,
-        'LinearSVC': LinearSVC
+        'lr': LogisticRegression,
+        'nb': MultinomialNB,
+        'svm': LinearSVC
     }
-    def __init__(self, n, tagged_sents, classifier_name='LinearSVC'):
+    def __init__(self, n, tagged_sents, classifier_name='lr'):
         """
         n -- order of the model.
         stagged_sents -- list of sentences, each one being a list of pairs.
@@ -25,6 +25,7 @@ class MEMM(object):
             word_lower, word_istitle, word_isupper, word_isdigit,
             PrevWord(word_lower)
         ] + [NPrevTags(i) for i in range(1, n)])
+        tagged_sents = list(tagged_sents)
         vect.fit(self.sents_histories(tagged_sents))
         self.classifier = Pipeline([
             ('vect', vect),

@@ -15,6 +15,7 @@ class MEMM(object):
         'nb': MultinomialNB,
         'svm': LinearSVC
     }
+
     def __init__(self, n, tagged_sents, classifier_name='lr'):
         """
         n -- order of the model.
@@ -23,7 +24,8 @@ class MEMM(object):
         self._n = n
         vect = Vectorizer([
             word_lower, word_istitle, word_isupper, word_isdigit,
-            PrevWord(word_lower)
+            PrevWord(word_lower), PrevWord(word_istitle),
+            PrevWord(word_isupper), PrevWord(word_isdigit)
         ] + [NPrevTags(i) for i in range(1, n)])
         tagged_sents = list(tagged_sents)
         vect.fit(self.sents_histories(tagged_sents))

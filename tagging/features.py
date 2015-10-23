@@ -71,4 +71,4 @@ class PrevWord(Feature):
         if not h.i:
             return 'BOS'
         else:
-            return self._f(History(h.sent, h.prev_tags, h.i-1))
+            return str(self._f(History(h.sent, h.prev_tags, h.i-1)))

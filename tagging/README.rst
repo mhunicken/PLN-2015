@@ -202,84 +202,84 @@ Vemos que aunque tienen menos precisión que el mejor MLHMM, tienen considerable
 
 SVM (n=1)::
 
-    Accuracy: 94.39%
+    Accuracy: 94.43%
     Accuracy (known words): 97.04%
-    Accuracy (unknown words): 70.34%
+    Accuracy (unknown words): 70.82%
 
-    real 51.75
-    user 51.29
-    sys 0.35
+    real 54.09
+    user 53.65
+    sys 0.32
 
 SVM (n=2)::
 
-    Accuracy: 94.28%
+    Accuracy: 94.29%
     Accuracy (known words): 96.91%
-    Accuracy (unknown words): 70.47%
+    Accuracy (unknown words): 70.57%
 
-    real 59.09
-    user 58.59
-    sys 0.39
+    real 66.12
+    user 65.50
+    sys 0.40
 
 SVM (n=3)::
 
-    Accuracy: 94.39%
+    Accuracy: 94.40%
     Accuracy (known words): 96.94%
-    Accuracy (unknown words): 71.29%
+    Accuracy (unknown words): 71.38%
 
-    real 62.63
-    user 62.20
-    sys 0.33
+    real 65.59
+    user 65.00
+    sys 0.41
 
 SVM (n=4)::
 
-    Accuracy: 94.45%
+    Accuracy: 94.46%
     Accuracy (known words): 96.96%
-    Accuracy (unknown words): 71.71%
+    Accuracy (unknown words): 71.81%
 
-    real 65.32
-    user 64.88
-    sys 0.30
+    real 65.98
+    user 64.68
+    sys 0.42
 
 Los resultados para Support Vector Machines son similares a los comentados de Logistic Regression, con la diferencia de que el SVC tiene considerablemente mejor performance. El SVC con n=4 es entre todos el que mejor precisión logra, tanto en general como para palabras desconocidas.
 
 Naive Bayes (n=1)::
 
-    Accuracy: 88.27%
-    Accuracy (known words): 92.18%
-    Accuracy (unknown words): 52.85%
+    Accuracy: 82.18%
+    Accuracy (known words): 85.85%
+    Accuracy (unknown words): 48.89%
 
-    real 2014.51
-    user 2008.88
-    sys 0.71
+    real 2287.81
+    user 2280.05
+    sys 0.68
 
 Naive Bayes (n=2)::
 
-    Accuracy: 80.94%
-    Accuracy (known words): 85.28%
-    Accuracy (unknown words): 41.62%
+    Accuracy: 76.46%
+    Accuracy (known words): 80.41%
+    Accuracy (unknown words): 40.68%
 
-    real 2014.51
-    user 2008.94
-    sys 1.02
+    real 2503.39
+    user 2459.48
+    sys 2.00
 
 Naive Bayes (n=3)::
 
-    Accuracy: 74.34%
-    Accuracy (known words): 78.10%
-    Accuracy (unknown words): 40.28%
+    Accuracy: 71.47%
+    Accuracy (known words): 75.09%
+    Accuracy (unknown words): 38.59%
 
-    real 2006.24
-    user 2001.95
-    sys 0.64
+    real 2637.87
+    user 2582.83
+    sys 3.92
 
 Naive Bayes (n=4)::
 
-    Accuracy: 69.80%
-    Accuracy (known words): 72.96%
-    Accuracy (unknown words): 41.21%
+    Accuracy: 68.20%
+    Accuracy (known words): 71.31%
+    Accuracy (unknown words): 40.01%
 
-    real 2012.39
-    user 2008.20
-    sys 0.47
+    real 2398.03
+    user 2386.11
+    sys 1.01
 
 El clasificador Multinomial Naive Bayes muestra una pésima performance. Esto es debido a que la simplificación de independencia entre features es demasiado fuerte para el problema en cuestión (se está asumiendo, por ejemplo, que el hecho de que una palabra sea "gato" es independiente de que sea "pescado"). También se ve que la situación empeora a medida que se agregan más features. También demora mucho la evaluación; debido a la simplicidad del algoritmo, es posible que se deba a una limitación de scikit-learn.

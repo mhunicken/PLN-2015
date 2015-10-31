@@ -1,10 +1,12 @@
 """Evaulate a parser.
 
 Usage:
-  eval.py -i <file>
+  eval.py [-m <m>] [-n <n>] -i <file>
   eval.py -h | --help
 
 Options:
+  -m <m>        Only evaluate sentences with at most m words
+  -n <n>        Evaluate only first n sentences
   -i <file>     Parsing model file.
   -h --help     Show this screen.
 """
@@ -39,12 +41,20 @@ if __name__ == '__main__':
     corpus = SimpleAncoraCorpusReader('ancora/ancora-2.0/', files)
     parsed_sents = list(corpus.parsed_sents())
 
+    if opts['-m']:
+        m = int(opts['-m'])
+        parsed_sents = [s for s in parsed_sents if len(s) <= m]
+
     print('Parsing...')
     hits, total_gold, total_model = 0, 0, 0
     n = len(parsed_sents)
+
+    if opts['-n']:
+        n = min(n, int(opts['-n']))
+
     format_str = '{:3.1f}% ({}/{}) (P={:2.2f}%, R={:2.2f}%, F1={:2.2f}%)'
     progress(format_str.format(0.0, 0, n, 0.0, 0.0, 0.0))
-    for i, gold_parsed_sent in enumerate(parsed_sents):
+    for i, gold_parsed_sent in enumerate(parsed_sents[:n]):
         tagged_sent = gold_parsed_sent.pos()
 
         # parse
@@ -62,7 +72,7 @@ if __name__ == '__main__':
         rec = float(hits) / total_gold * 100
         f1 = 2 * prec * rec / (prec + rec)
 
-        progress(format_str.format(float(i+1) * 100 / n, i+1, n, prec, rec, f1))
+        progress(format_str.format(float(i+1) * 100/n, i+1, n, prec, rec, f1))
 
     print('')
     print('Parsed {} sentences'.format(n))

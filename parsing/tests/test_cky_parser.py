@@ -111,7 +111,7 @@ class TestCKYParser(TestCase):
                 ConjS -> Conj S         [1.0]
                 CN -> Noun ConjNoun     [1.0]
                 ConjNoun -> Conj Noun   [1.0]
-                Verb -> 'come'       [1.0]
+                Verb -> 'come'          [1.0]
                 Noun -> 'pescado'       [0.5]
                 Noun -> 'arroz'         [0.5]
                 Conj -> 'y'             [1.0]

@@ -57,4 +57,7 @@ class CKYParser:
                                 Tree(nt, [bp[(i, k)][rh0], bp[(k+1, j)][rh1]])
 
         start = self.grammar.start().symbol()
-        return pi[(1, len(sent))][start], bp[(1, len(sent))][start]
+        if start in pi[(1, len(sent))]:
+            return pi[(1, len(sent))][start], bp[(1, len(sent))][start]
+        else:
+            return float('-inf'), None

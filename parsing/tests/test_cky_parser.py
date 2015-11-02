@@ -51,7 +51,8 @@ class TestCKYParser(TestCase):
             (1, 5): {'S':
                      log2(1.0) +  # rule S -> NP VP
                      log2(0.6 * 1.0 * 0.9) +  # left part
-                     log2(1.0) + log2(1.0) + log2(0.4 * 0.1 * 1.0)},  # right part
+                     log2(1.0) + log2(1.0) +
+                     log2(0.4 * 0.1 * 1.0)},  # right part
         }
         self.assertEqualPi(parser._pi, pi)
 
@@ -97,6 +98,102 @@ class TestCKYParser(TestCase):
 
         # check log probability
         lp2 = log2(1.0 * 0.6 * 1.0 * 0.9 * 1.0 * 1.0 * 0.4 * 0.1 * 1.0)
+        self.assertAlmostEqual(lp, lp2)
+
+    def test_parse_ambiguous(self):
+        grammar = PCFG.fromstring(
+            """
+                S -> S ConjS            [0.2]
+                S -> Verb Noun          [0.4]
+                S -> Verb CN            [0.3]
+                S -> 'arroz'            [0.05]
+                S -> 'pescado'          [0.05]
+                ConjS -> Conj S         [1.0]
+                CN -> Noun ConjNoun     [1.0]
+                ConjNoun -> Conj Noun   [1.0]
+                Verb -> 'come'       [1.0]
+                Noun -> 'pescado'       [0.5]
+                Noun -> 'arroz'         [0.5]
+                Conj -> 'y'             [1.0]
+            """)
+
+        parser = CKYParser(grammar)
+
+        lp, t = parser.parse('come pescado y arroz'.split())
+
+        # check chart
+        pi = {
+            (1, 1): {'Verb': log2(1.0)},
+            (2, 2): {'Noun': log2(0.5), 'S': log2(0.05)},
+            (3, 3): {'Conj': log2(1.0)},
+            (4, 4): {'Noun': log2(0.5), 'S': log2(0.05)},
+
+            (1, 2): {'S': log2(0.4 * 1.0 * 0.5)},
+            (2, 3): {},
+            (3, 4): {'ConjNoun': log2(1.0 * 1.0 * 0.5),
+                     'ConjS': log2(1.0 * 1.0 * 0.05)},
+
+            (1, 3): {},
+            (2, 4): {'CN': log2(1.0) + log2(0.5) + log2(1.0 * 0.5 * 1.0),
+                     'S': log2(0.2) + log2(0.05) + log2(1.0 * 1.0 * 0.05)},
+
+            (1, 4): {'S':
+                     max(
+                         # S -> S ConjS
+                         log2(0.2) + log2(0.4 * 1.0 * 0.5) +
+                         log2(1.0 * 1.0 * 0.05),
+                         # S -> Verb CN (greater)
+                         log2(0.3) + log2(1.0) +
+                         log2(1.0 * 0.5 * 1.0 * 0.5 * 1.0)
+                     )},
+        }
+        self.assertEqualPi(parser._pi, pi)
+
+        # best parsing:
+        t2 = Tree.fromstring("""
+            (S
+                (Verb come)
+                (CN
+                    (Noun pescado)
+                    (ConjNoun (Conj y) (Noun arroz))
+                )
+            )
+        """)
+
+        # check partial results
+        bp = {
+            (1, 1): {'Verb': Tree.fromstring("(Verb come)")},
+            (2, 2): {'Noun': Tree.fromstring("(Noun pescado)"),
+                     'S': Tree.fromstring("(S pescado)")},
+            (3, 3): {'Conj': Tree.fromstring("(Conj y)")},
+            (4, 4): {'Noun': Tree.fromstring("(Noun arroz)"),
+                     'S': Tree.fromstring("(S arroz)")},
+
+            (1, 2): {'S': Tree.fromstring("(S (Verb come) (Noun pescado))")},
+            (2, 3): {},
+            (3, 4): {'ConjNoun':
+                     Tree.fromstring("(ConjNoun (Conj y) (Noun arroz))"),
+                     'ConjS': Tree.fromstring("(ConjS (Conj y) (S arroz))")},
+
+            (1, 3): {},
+            (2, 4): {'CN':
+                     Tree.fromstring("""
+                         (CN (Noun pescado) (ConjNoun (Conj y) (Noun arroz)))
+                     """),
+                     'S':
+                     Tree.fromstring("""
+                        (S (S pescado) (ConjS (Conj y) (S arroz)))
+                     """)},
+
+            (1, 4): {'S': t2}
+        }
+        self.assertEqual(parser._bp, bp)
+
+        # check tree
+        self.assertEqual(t, t2)
+
+        # check log probability
+        lp2 = log2(0.3 * 1.0 * 1.0 * 0.5 * 1.0 * 0.5 * 1.0)
         self.assertAlmostEqual(lp, lp2)
 
     def assertEqualPi(self, pi1, pi2):

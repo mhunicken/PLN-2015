@@ -51,4 +51,6 @@ class UPCFG:
         _, parsing = self.parser.parse(tags)
         if parsing is None:
             return Flat(None, self.start).parse(tagged_sent)
-        return lexicalize(parsing, sent)
+        parsing = lexicalize(parsing, sent)
+        parsing.un_chomsky_normal_form()
+        return parsing

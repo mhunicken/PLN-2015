@@ -20,7 +20,7 @@ class UPCFG:
             sent = copy.deepcopy(sent)
             unlexicalize(sent)
             sent.chomsky_normal_form()
-            sent.collapse_unary(collapsePOS=True)
+            sent.collapse_unary(collapsePOS=True, collapseRoot=True)
             for prod in sent.productions():
                 prod_count[prod] += 1
                 nt_count[prod.lhs()] += 1
@@ -34,12 +34,13 @@ class UPCFG:
             for p, c in prod_count.items()
         ]
 
-        self.pcfg = PCFG(Nonterminal(start), prob_prod)
+        self.parser = CKYParser(PCFG(Nonterminal(start), prob_prod))
+        self.start = start
 
     def productions(self):
         """Returns the list of UPCFG probabilistic productions.
         """
-        return self.pcfg.productions()
+        return self.parser.grammar.productions()
 
     def parse(self, tagged_sent):
         """Parse a tagged sentence.
@@ -47,7 +48,7 @@ class UPCFG:
         tagged_sent -- the tagged sentence (a list of pairs (word, tag)).
         """
         sent, tags = zip(*tagged_sent)
-        _, parsing = CKYParser(self.pcfg).parse(tags)
+        _, parsing = self.parser.parse(tags)
         if parsing is None:
-            return Flat(None, self.pcfg.start().symbol()).parse(tagged_sent)
+            return Flat(None, self.start).parse(tagged_sent)
         return lexicalize(parsing, sent)

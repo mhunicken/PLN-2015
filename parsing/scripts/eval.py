@@ -43,7 +43,7 @@ if __name__ == '__main__':
 
     if opts['-m']:
         m = int(opts['-m'])
-        parsed_sents = [s for s in parsed_sents if len(s) <= m]
+        parsed_sents = [s for s in parsed_sents if len(s.pos()) <= m]
 
     print('Parsing...')
     hits, total_gold, total_model = 0, 0, 0

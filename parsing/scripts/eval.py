@@ -46,7 +46,7 @@ if __name__ == '__main__':
         parsed_sents = [s for s in parsed_sents if len(s.pos()) <= m]
 
     print('Parsing...')
-    hits, total_gold, total_model = 0, 0, 0
+    hits, hits_unlab, total_gold, total_model = 0, 0, 0, 0
     n = len(parsed_sents)
 
     if opts['-n']:
@@ -66,6 +66,9 @@ if __name__ == '__main__':
         hits += len(gold_spans & model_spans)
         total_gold += len(gold_spans)
         total_model += len(model_spans)
+        gold_spans = set(zip(*(list(zip(*gold_spans))[1:])))
+        model_spans = set(zip(*(list(zip(*model_spans))[1:])))
+        hits_unlab += len(gold_spans & model_spans)
 
         # compute labeled partial results
         prec = float(hits) / total_model * 100
@@ -80,3 +83,10 @@ if __name__ == '__main__':
     print('  Precision: {:2.2f}% '.format(prec))
     print('  Recall: {:2.2f}% '.format(rec))
     print('  F1: {:2.2f}% '.format(f1))
+    prec_unlab = float(hits_unlab) / total_model * 100
+    rec_unlab = float(hits) / total_gold * 100
+    f1_unlab = 2 * prec_unlab * rec_unlab / (prec_unlab + rec_unlab)
+    print('Unlabeled')
+    print('  Precision: {:2.2f}% '.format(prec_unlab))
+    print('  Recall: {:2.2f}% '.format(rec_unlab))
+    print('  F1: {:2.2f}% '.format(f1_unlab))

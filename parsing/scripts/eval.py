@@ -66,8 +66,8 @@ if __name__ == '__main__':
         hits += len(gold_spans & model_spans)
         total_gold += len(gold_spans)
         total_model += len(model_spans)
-        gold_spans = set(zip(*(list(zip(*gold_spans))[1:])))
-        model_spans = set(zip(*(list(zip(*model_spans))[1:])))
+        gold_spans = set((i, j) for _, i, j in gold_spans)
+        model_spans = set((i, j) for _, i, j in model_spans)
         hits_unlab += len(gold_spans & model_spans)
 
         # compute labeled partial results

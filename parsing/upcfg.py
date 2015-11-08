@@ -10,7 +10,7 @@ class UPCFG:
     """Unlexicalized PCFG.
     """
 
-    def __init__(self, parsed_sents, start='sentence'):
+    def __init__(self, parsed_sents, start='sentence', horzMarkov=None):
         """
         parsed_sents -- list of training trees.
         """
@@ -19,7 +19,7 @@ class UPCFG:
         for sent in parsed_sents:
             sent = copy.deepcopy(sent)
             unlexicalize(sent)
-            sent.chomsky_normal_form()
+            sent.chomsky_normal_form(horzMarkov=horzMarkov)
             sent.collapse_unary(collapsePOS=True, collapseRoot=True)
             for prod in sent.productions():
                 prod_count[prod] += 1

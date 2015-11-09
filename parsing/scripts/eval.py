@@ -84,7 +84,7 @@ if __name__ == '__main__':
     print('  Recall: {:2.2f}% '.format(rec))
     print('  F1: {:2.2f}% '.format(f1))
     prec_unlab = float(hits_unlab) / total_model * 100
-    rec_unlab = float(hits) / total_gold * 100
+    rec_unlab = float(hits_unlab) / total_gold * 100
     f1_unlab = 2 * prec_unlab * rec_unlab / (prec_unlab + rec_unlab)
     print('Unlabeled')
     print('  Precision: {:2.2f}% '.format(prec_unlab))

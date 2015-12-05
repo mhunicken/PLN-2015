@@ -1,7 +1,7 @@
 # https://docs.python.org/3/library/unittest.html
 from unittest import TestCase
 
-from languagemodeling.ngram import BackOffNGram
+from languagemodeling.ngram import BackOffNGram, BackOffNGramWrapper
 
 
 class TestBackoffNGram(TestCase):
@@ -250,3 +250,90 @@ class TestBackoffNGram(TestCase):
 
     def assertAlmostLessEqual(self, a, b, places=7, msg=None):
         self.assertTrue(a < b or round(abs(a - b), places) == 0, msg=msg)
+
+
+    def test_wrapper_cond_prob_1gram_no_addone(self):
+        model = BackOffNGramWrapper(1, self.sents, beta=0.5, addone=False)
+
+        # behaves just like unsmoothed n-gram
+        probs = {
+            'pescado': 1 / 12.0,
+            'come': 2 / 12.0,
+            'salame': 0.0,
+        }
+        for token, p in probs.items():
+            self.assertAlmostEqual(model.cond_prob(token), p, msg=token)
+
+    def test_wrapper_cond_prob_2gram_no_addone(self):
+        model = BackOffNGramWrapper(2, self.sents, beta=0.5, addone=False)
+
+        probs = {
+            ('pescado', 'come'): (1 - 0.5) / 2.0,
+            ('salmón', 'come'): (1 - 0.5) / 2.0,
+            ('salame', 'come'): 0.0,  # back-off to the unigram that is 0.0
+        }
+        for (token, prev), p in probs.items():
+            self.assertAlmostEqual(model.cond_prob(token, [prev]), p, msg=token)
+
+    def test_wrapper_cond_prob_2gram_no_discount_no_addone(self):
+        model = BackOffNGramWrapper(2, self.sents, beta=0.0, addone=False)
+
+        probs = {
+            ('pescado', 'come'): 1.0 / 2.0,
+            ('salmón', 'come'): 1.0 / 2.0,
+            ('salame', 'come'): 0.0,  # back-off to the unigram that is 0.0
+        }
+        for (token, prev), p in probs.items():
+            self.assertAlmostEqual(model.cond_prob(token, [prev]), p, msg=(token))
+
+    def test_wrapper_norm_1gram(self):
+        models = [
+            BackOffNGramWrapper(1, self.sents, beta=0.0, addone=False),
+            BackOffNGramWrapper(1, self.sents, beta=0.5, addone=False),
+            BackOffNGramWrapper(1, self.sents, beta=0.0, addone=True),
+            BackOffNGramWrapper(1, self.sents, beta=0.5, addone=True),
+        ]
+
+        tokens = ['el', 'gato', 'come', 'pescado', '.', 'la', 'gata', 'salmón', '</s>']
+
+        for model in models:
+            prob_sum = sum(model.cond_prob(token) for token in tokens)
+            # prob_sum < 1.0 or almost equal to 1.0:
+            self.assertAlmostLessEqual(prob_sum, 1.0)
+
+    def test_wrapper_norm_2gram(self):
+        models = [
+            BackOffNGramWrapper(2, self.sents, beta=0.0, addone=False),
+            BackOffNGramWrapper(2, self.sents, beta=0.5, addone=False),
+            BackOffNGramWrapper(2, self.sents, beta=0.0, addone=True),
+            BackOffNGramWrapper(2, self.sents, beta=0.5, addone=True),
+        ]
+
+        tokens = {'el', 'gato', 'come', 'pescado', '.', 'la', 'gata', 'salmón', '</s>'}
+        prevs = {'el', 'gato', 'come', 'pescado', '.', 'la', 'gata', 'salmón', '<s>'}
+
+        for model in models:
+            for prev in prevs:
+                prob_sum = sum(model.cond_prob(token, [prev]) for token in tokens)
+                # prob_sum < 1.0 or almost equal to 1.0:
+                self.assertAlmostLessEqual(prob_sum, 1.0, msg=prev)
+
+    def test_wrapper_norm_3gram(self):
+        models = [
+            BackOffNGramWrapper(3, self.sents, beta=0.0, addone=False),
+            BackOffNGramWrapper(3, self.sents, beta=0.5, addone=False),
+            BackOffNGramWrapper(3, self.sents, beta=0.0, addone=True),
+            BackOffNGramWrapper(3, self.sents, beta=0.5, addone=True),
+        ]
+
+        tokens = {'el', 'gato', 'come', 'pescado', '.', 'la', 'gata', 'salmón', '</s>'}
+        prev_tokens = {'el', 'gato', 'come', 'pescado', '.', 'la', 'gata', 'salmón', '<s>'}
+        prevs = [['<s>', '<s>']] + \
+            [['<s>', t] for t in prev_tokens] + \
+            [[t1, t2] for t1 in prev_tokens for t2 in prev_tokens]
+
+        for model in models:
+            for prev in prevs:
+                prob_sum = sum(model.cond_prob(token, prev) for token in tokens)
+                # prob_sum < 1.0 or almost equal to 1.0:
+                self.assertAlmostLessEqual(prob_sum, 1.0, msg=prev)

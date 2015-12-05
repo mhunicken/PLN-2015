@@ -28,7 +28,7 @@ sys.path.append(
         os.pardir, os.pardir))
 
 from languagemodeling.ngram import NGram, AddOneNGram, \
-    InterpolatedNGram, BackOffNGram
+    InterpolatedNGram, BackOffNGram, BackOffNGramWrapper
 
 
 if __name__ == '__main__':
@@ -51,6 +51,8 @@ if __name__ == '__main__':
         model = InterpolatedNGram(n, sents)
     elif model_type == 'backoff':
         model = BackOffNGram(n, sents)
+    elif model_type == 'backoff2':
+        model = BackOffNGramWrapper(n, sents)
     else:
         print('Invalid model type')
         exit(1)

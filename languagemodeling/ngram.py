@@ -317,7 +317,7 @@ class BackOffNGram(NGram):
                 self.card_a[prev_tokens] += 1
                 self.sum_c[prev_tokens] += self.count(tokens[1:])
 
-        self.addone = addone
+        self.addone = bool(addone)
 
         self.beta = beta
         if self.beta is None:
@@ -371,6 +371,13 @@ class BackOffNGram(NGram):
             return 1 - (self.sum_c[tokens]-self.beta*self.card_a[tokens]) / \
                 self.count(tokens[1:])
 
+    def norm_factor(self, tokens):
+        if self.beta > 0:
+            return self.alpha(tokens) / self.denom(tokens)
+        else:
+            # If beta is 0, there is no residual probability
+            return 0.
+
     def cond_prob(self, token, prev_tokens=None):
         prev_tokens = prev_tokens or ()
         prev_tokens = tuple(prev_tokens)
@@ -378,17 +385,33 @@ class BackOffNGram(NGram):
 
         if not len(prev_tokens):
             # unigram
-            if not self.addone:
-                return float(self.count(tokens)) / self.count(prev_tokens)
-            return float(self.count(tokens)+1) / \
-                (self.count(prev_tokens) + self.V())
-
-        if self.count(tokens):
+            return float(self.count(tokens) + self.addone) / \
+                (self.count(prev_tokens) + self.addone*self.V())
+        elif self.count(tokens):
             return (self.count(tokens)-self.beta)/self.count(prev_tokens)
-        elif self.beta > 0.:
-            return self.alpha(prev_tokens) * \
-                self.cond_prob(token, prev_tokens[1:]) / \
-                self.denom(prev_tokens)
         else:
-            # If beta is 0, there is no residual probability
-            return 0.
+            return self.norm_factor(prev_tokens) * self.cond_prob(token, prev_tokens[1:])
+
+
+class BackOffNGramWrapper(BackOffNGram):
+    def __init__(self, n, sents, beta=None, addone=True):
+        self.n = n
+        self.addone = addone
+        bo_model = BackOffNGram(n, sents, beta, addone)
+        self.counts = bo_model.counts
+        self.beta = bo_model.beta
+        self.vocab_size = bo_model.vocab_size
+        self.norm_factors = {}
+        if self.beta > 0:
+            for tokens in self.counts:
+                if 0 < len(tokens) < self.n:
+                    self.norm_factors[tokens] = bo_model.norm_factor(tokens)
+
+    def norm_factor(self, tokens):
+        return self.norm_factors.get(tokens, 1. if self.beta > 0 else 0.)
+
+    def alpha(self, tokens):
+        raise NotImplementedError
+
+    def denom(self, tokens):
+        raise NotImplementedError
